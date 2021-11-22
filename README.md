@@ -1,4 +1,4 @@
-# authServiceGql
+# Graphql Skeleton
 
 # Install
 
