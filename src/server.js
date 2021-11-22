@@ -9,12 +9,13 @@ const express = require('express'),
 		ApolloServerPluginInlineTraceDisabled
 	} = require('apollo-server-core'),
 	{ context, formatError } = require('./middleware'),
+	{ graphqlUploadExpress } = require('graphql-upload'),
 	schema = require('./schema')
 
 async function startApolloServer(port) {
 	const app = express()
+	app.use(graphqlUploadExpress())
 	app.disable('x-powered-by')
-
 	app.get('/', async (req, res) => {
 		return res.status(200).json({
 			errors: true,
@@ -26,8 +27,6 @@ async function startApolloServer(port) {
 	const server = new ApolloServer({
 		introspection: true,
 		schema,
-		context,
-		formatError,
 		plugins: [
 			ApolloServerPluginCacheControlDisabled(),
 			ApolloServerPluginInlineTraceDisabled(),
@@ -39,7 +38,7 @@ async function startApolloServer(port) {
 	await server.start()
 	server.applyMiddleware({ app })
 	await new Promise((resolve) => httpServer.listen({ port }, resolve))
-	console.log(`🚀 Server ready at http://localhost:${ port }${ server.graphqlPath }`)
+	console.log(`🚀 Server ready at http://localhost:${port}${server.graphqlPath}`)
 }
 
 startApolloServer(3000)
