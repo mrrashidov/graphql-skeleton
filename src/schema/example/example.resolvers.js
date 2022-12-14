@@ -1,7 +1,8 @@
 const { UserInputError, ApolloError } = require('apollo-server-errors')
+const { GraphQLError } = require('graphql')
 const { createWriteStream, mkdir } = require('fs')
 const { getHelloSchema } = require('../../validation/example')
-const { validateInput } = require('../../helpers')
+const { validateInput } = require('../../lib/helpers')
 const storeUpload = async ({ stream, filename, mimetype, encoding }) => {
 	const id = Date.now()
 	const path = `images/${id}-${filename}`
@@ -9,7 +10,17 @@ const storeUpload = async ({ stream, filename, mimetype, encoding }) => {
 	return new Promise((resolve, reject) =>
 		stream
 			.pipe(createWriteStream(path))
-			.on('finish', () => resolve({ id, location: path, filename, mimetype, encoding, success: true, message: 'File uploaded successfully' }))
+			.on('finish', () =>
+				resolve({
+					id,
+					location: path,
+					filename,
+					mimetype,
+					encoding,
+					success: true,
+					message: 'File uploaded successfully'
+				})
+			)
 			.on('error', reject)
 	)
 }
@@ -32,11 +43,7 @@ const processUpload = async ({ file }) => {
 //Mime type check
 let typeCheck = async ({ file }) => {
 	let { mimetype } = await file
-	if (!(mimetype === 'image/png' || mimetype === 'image/jpeg')) {
-		return false
-	} else {
-		return true
-	}
+	return mimetype === 'image/png' || mimetype === 'image/jpeg'
 }
 module.exports = {
 	Query: {
@@ -56,7 +63,7 @@ module.exports = {
 	Mutation: {
 		singleUpload: async (_, args) => {
 			mkdir('images', { recursive: true }, (err) => {
-				if (err) throw new ApolloError(err.message)
+				if (err) throw new GraphQLError(err.message)
 			})
 			return processUpload(args)
 		}
