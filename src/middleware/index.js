@@ -1,38 +1,40 @@
-const { ForbiddenError, AuthenticationError } = require('apollo-server-core')
+const { GraphQLError } = require('graphql')
 const { verify } = require('jsonwebtoken')
 const can =
 	(permission, modal = false) =>
-		(next) =>
-			(root, args, context, info) => {
-				context.user = JSON.parse(context.headers.user ? context.headers.user : null)
-				context.permissions = JSON.parse(context.headers.permissions ? context.headers.permissions : null)
+	(next) =>
+	(root, args, context, info) => {
+		context.user = JSON.parse(context.headers.user ? context.headers.user : null)
+		context.permissions = JSON.parse(context.headers.permissions ? context.headers.permissions : null)
 
-				const access = typeof permission === 'string' ? context.permissions.includes(permission) : permission.some((r) => context.permissions.includes(r))
+		const access = typeof permission === 'string' ? context.permissions.includes(permission) : permission.some((r) => context.permissions.includes(r))
 
-				if (!context.user) throw new AuthenticationError(`Unauthenticated!`)
-
-				if (context.permissions && !access) throw new ForbiddenError(`Forbidden!`)
-				return modal ? access : next(root, args, context, info)
-			}
+		if (!context.user)
+			throw new GraphQLError('Unauthenticated.', {
+				extensions: {
+					code: 'UNAUTHENTICATED'
+				}
+			})
+		if (context.permissions && !access)
+			throw new GraphQLError('You are not authorized to perform this action.', {
+				extensions: {
+					code: 'FORBIDDEN'
+				}
+			})
+		return modal ? access : next(root, args, context, info)
+	}
 
 function haveAccess(permissions, permission) {
 	return typeof permission === 'string' ? permissions.includes(permission) : permission.some((r) => permissions.includes(r))
 }
 
+const PUBLIC_ACTIONS = ['login', 'storeApplicationForm', 'hello']
 
-const PUBLIC_ACTIONS = [ "login", "storeApplicationForm","hello" ]
+const actionIsPublic = ({ query }) => PUBLIC_ACTIONS.some((action) => query.includes(action))
 
-const actionIsPublic = ({ query }) => (
-	PUBLIC_ACTIONS.some(action => query.includes(action))
-)
+const isIntrospectionQuery = ({ operationName }) => operationName === 'IntrospectionQuery'
 
-const isIntrospectionQuery = ({ operationName }) => (
-	operationName === 'IntrospectionQuery'
-)
-
-const shouldAuthenticate = body => (
-	!isIntrospectionQuery(body) && !actionIsPublic(body)
-)
+const shouldAuthenticate = (body) => !isIntrospectionQuery(body) && !actionIsPublic(body)
 
 const context = async ({ req }) => {
 	if (shouldAuthenticate(req.body)) {
@@ -40,22 +42,8 @@ const context = async ({ req }) => {
 	}
 }
 
-const formatError = (e) => {
-	return process.env.NODE_ENV === 'production'
-		? {
-			message: e.message.startsWith('Database Error: ')
-				? 'Internal server error'
-				: e.message.startsWith('Context creation failed: Query too large')
-					? 'Query too large'
-					: e.message,
-			locations: e.locations
-		}
-		: e
-}
-
 module.exports = {
 	context,
-	formatError,
 	can,
 	haveAccess
 }

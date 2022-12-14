@@ -1,7 +1,7 @@
-const Model = require('./model')
+const Model = require('../../core/model')
 
-class Example extends Model {
+class ExampleModel extends Model {
 	tableName = 'example'
 }
 
-module.exports = new Example()
+module.exports = new ExampleModel()

@@ -1,5 +1,5 @@
-const exampleResolvers = require('./resolvers'),
-	exampleTypeDefs = require('./type-defs')
+const exampleResolvers = require('./example.resolvers'),
+	exampleTypeDefs = require('./example.type-defs')
 module.exports = {
 	exampleResolvers,
 	exampleTypeDefs
